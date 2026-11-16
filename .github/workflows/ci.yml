@@ -6,6 +6,9 @@ on: [push, pull_request]
 jobs:
   python:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
@@ -14,7 +17,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Installer les dépendances
         run: pip install -r requirements.txt
@@ -81,4 +84,22 @@ jobs:
       - name: Lancer les tests
         run: vendor/bin/phpunit tests
         working-directory: php-app
+
+  build:
+    needs: [python, node, java, php]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Tous les tests sont verts, build OK"
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déploiement simulé
+        env:
+          TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          echo "Déploiement en cours..."
+          test -n "$TOKEN" && echo "Token présent (valeur masquée)"
 
