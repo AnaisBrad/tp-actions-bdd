@@ -1,40 +1,38 @@
+import os
+
 import psycopg2
 
 
-# Se connecter à la base de données
 def get_connection():
     return psycopg2.connect(
-        host="localhost",
-        database="tp",
-        user="postgres",
-        password="postgres"
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        dbname=os.getenv("DB_NAME", "tp"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgres"),
     )
 
 
-# Ajouter un étudiant
 def add_student(conn, name, grade):
-    with conn.cursor() as cur:
+    """Ajoute un étudiant et retourne son id."""
+    with conn, conn.cursor() as cur:
         cur.execute(
             "INSERT INTO students (name, grade) VALUES (%s, %s) RETURNING id",
-            (name, grade)
+            (name, grade),
         )
-        student_id = cur.fetchone()[0]
-
-    conn.commit()
-    return student_id
+        return cur.fetchone()[0]
 
 
-# Rechercher un étudiant par son identifiant
 def get_student(conn, student_id):
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT * FROM students WHERE id = %s",
-            (student_id,)
-        )
-        return cur.fetchone()
+    """Retourne {"name": ..., "grade": ...}, ou None si l'étudiant n'existe pas."""
+    with conn, conn.cursor() as cur:
+        cur.execute("SELECT name, grade FROM students WHERE id = %s", (student_id,))
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return {"name": row[0], "grade": float(row[1])}
 
 
-# Calculer la moyenne des notes
 def average_grade(conn):
     """Retourne la moyenne des notes, ou None s'il n'y a aucun étudiant."""
     with conn, conn.cursor() as cur:
